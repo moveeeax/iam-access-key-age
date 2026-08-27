@@ -1,0 +1,54 @@
+USER            ACCESS KEY             STATUS    AGE(d)  LAST USED  REASON
+old-rotated     AKIAINACT00000000005   Inactive  900     300d ago   inactive
+ci-deployer     AKIAOLD0000000000001   Active    412     2d ago     old
+legacy-backup   AKIANEVER000000000002  Active    160     never      old+unused
+app-runtime     AKIASTALE00000000003   Active    20      140d ago   unused
+developer-jane  AKIAFRESH00000000004   Active    9       1d ago     ok
+
+[
+  {
+    "user": "old-rotated",
+    "access_key_id": "AKIAINACT00000000005",
+    "status": "Inactive",
+    "created": "2024-03-10T12:00:00Z",
+    "age_days": 900,
+    "last_used_days": 300,
+    "reason": "inactive"
+  },
+  {
+    "user": "ci-deployer",
+    "access_key_id": "AKIAOLD0000000000001",
+    "status": "Active",
+    "created": "2025-07-11T12:00:00Z",
+    "age_days": 412,
+    "last_used_days": 2,
+    "reason": "old"
+  },
+  {
+    "user": "legacy-backup",
+    "access_key_id": "AKIANEVER000000000002",
+    "status": "Active",
+    "created": "2026-03-20T12:00:00Z",
+    "age_days": 160,
+    "last_used_days": null,
+    "reason": "old+unused"
+  },
+  {
+    "user": "app-runtime",
+    "access_key_id": "AKIASTALE00000000003",
+    "status": "Active",
+    "created": "2026-08-07T12:00:00Z",
+    "age_days": 20,
+    "last_used_days": 140,
+    "reason": "unused"
+  },
+  {
+    "user": "developer-jane",
+    "access_key_id": "AKIAFRESH00000000004",
+    "status": "Active",
+    "created": "2026-08-18T12:00:00Z",
+    "age_days": 9,
+    "last_used_days": 1,
+    "reason": "ok"
+  }
+]
