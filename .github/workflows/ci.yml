@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-test:
-    runs-on: iam-access-key-age
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
