@@ -1,7 +1,7 @@
 # iam-access-key-age
 
 [![CI](https://github.com/moveeeax/iam-access-key-age/actions/workflows/ci.yml/badge.svg)](https://github.com/moveeeax/iam-access-key-age/actions/workflows/ci.yml)
-[![Go](https://img.shields.io/badge/go-1.24+-00ADD8?logo=go)](https://go.dev)
+[![Go](https://img.shields.io/badge/go-1.26+-00ADD8?logo=go)](https://go.dev)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 Flag stale or never-used AWS IAM access keys and **fail CI before an old credential becomes a breach.**
@@ -35,6 +35,8 @@ code is `1` when any key breaches the policy you selected with `--fail-on`, so a
 single line in CI blocks a deploy on a rotting credential.
 
 ## Install
+
+Requires Go 1.26 or newer.
 
 ```sh
 go install github.com/moveeeax/iam-access-key-age@latest
