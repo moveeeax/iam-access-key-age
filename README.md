@@ -29,6 +29,7 @@ It then classifies each key:
 | `old+unused` | both of the above |
 | `ok` | active and within thresholds |
 | `inactive` | key is disabled — reported, never gated |
+| `excepted` | active `old`/`unused` key covered by an unexpired entry in `--exceptions` — reported, never gated |
 
 Output is a table sorted **oldest key first**, or `--json` for machines. The exit
 code is `1` when any key breaches the policy you selected with `--fail-on`, so a
@@ -65,6 +66,7 @@ iam-access-key-age --fail-on unused --stale-days 60
 | `--stale-days` | `90` | active keys unused this long are `unused` |
 | `--fail-on` | `old` | `none`, `old`, or `unused` — what turns the exit code red |
 | `--json` | `false` | emit a JSON array instead of a table |
+| `--exceptions` | none | YAML file of keys that do not gate until their `expires` date |
 
 `--fail-on unused` is the stricter gate: it trips on both `old` and `unused` keys.
 
@@ -93,11 +95,65 @@ The `--json` form emits one object per key:
 }
 ```
 
+Keys that match an exception carry an `exception` object; keys without one have
+no `exception` field:
+
+```json
+"exception": {
+  "user": "break-glass",
+  "reason": "emergency access key, sealed in the safe",
+  "expires": "2026-12-31",
+  "expired": false,
+  "suppressed_reason": "old+unused"
+}
+```
+
+`user` and `access_key_id` echo whichever the entry set. `suppressed_reason` is
+the reason the key would have without the exception.
+
 See [`examples/demo`](examples/demo) for a runnable, offline render:
 
 ```sh
 go run ./examples/demo
 ```
+
+## Exceptions
+
+A known break-glass key or a vendor key that cannot be rotated yet would fail
+the gate on every run. Instead of loosening `--fail-on`, list it in an
+exceptions file with a reason and an end date:
+
+```yaml
+exceptions:
+  - user: break-glass               # every key of this user
+    reason: emergency access key, sealed in the safe
+    expires: 2026-12-31
+  - access_key_id: AKIAVENDOR0000000001   # one key
+    reason: vendor rotation scheduled for their Q1 release
+    expires: 2027-01-15
+```
+
+```sh
+iam-access-key-age --fail-on old --exceptions exceptions.yaml
+```
+
+Rules:
+
+- Each entry needs `user`, `access_key_id`, or both (then a key must match
+  both), plus a non-empty `reason` and an `expires` date as `YYYY-MM-DD`.
+  Unknown fields and malformed dates are an error (exit code `2`), so a typo
+  cannot silently drop or widen an exception.
+- An exception holds through the end of its `expires` day in UTC.
+- A matching `old` or `unused` key is reported as `excepted` and does not count
+  toward the exit code. The table shows the window, e.g.
+  `excepted (old+unused, until 2026-12-31)`.
+- Once expired, the key gates again with its normal reason, the table shows
+  `old (exception expired 2026-10-01)`, and a warning goes to stderr.
+- An unexpired entry that matches no key also prints a warning, which catches
+  typos and exceptions left behind after a key was deleted.
+- When several entries match one key, the first unexpired one in file order wins.
+
+See [`examples/exceptions.yaml`](examples/exceptions.yaml).
 
 ## Use in CI
 

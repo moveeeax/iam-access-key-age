@@ -5,6 +5,7 @@ go 1.26
 require (
 	github.com/aws/aws-sdk-go-v2/config v1.33.14
 	github.com/aws/aws-sdk-go-v2/service/iam v1.64.7
+	go.yaml.in/yaml/v3 v3.0.6
 )
 
 require (

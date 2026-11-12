@@ -1,0 +1,12 @@
+# Keys listed here are reported as "excepted" and do not gate CI until their
+# expires date passes. Every entry needs a reason and an expires date.
+exceptions:
+  # Every key of one user.
+  - user: break-glass
+    reason: emergency access key, sealed in the safe, reviewed quarterly
+    expires: 2026-12-31
+
+  # One specific key.
+  - access_key_id: AKIAVENDOR0000000001
+    reason: vendor integration, rotation scheduled with their Q1 release (TICKET-123)
+    expires: 2027-01-15

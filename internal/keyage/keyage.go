@@ -27,6 +27,9 @@ type Config struct {
 	StaleDays  int       // Active keys not used within this window are "unused"
 	FailOn     string    // "none", "old", or "unused"
 	Now        time.Time // evaluation time; injected so tests are deterministic
+
+	// Exceptions suppress the gate for matching keys until they expire.
+	Exceptions []Exception
 }
 
 // Finding is the per-key verdict. JSON tags match the documented --json schema.
@@ -39,8 +42,13 @@ type Finding struct {
 	LastUsedDays *int      `json:"last_used_days"` // nil when never used
 	Reason       string    `json:"reason"`
 
-	old    bool
-	unused bool
+	// Exception is the matching exceptions-file entry, if any. An expired one
+	// is still attached so the output shows why the key gates again.
+	Exception *ExceptionMatch `json:"exception,omitempty"`
+
+	old      bool
+	unused   bool
+	excepted bool
 }
 
 // Old reports whether the key breached the max-age threshold.
@@ -48,6 +56,10 @@ func (f Finding) Old() bool { return f.old }
 
 // Unused reports whether an active key is stale (never used or beyond StaleDays).
 func (f Finding) Unused() bool { return f.unused }
+
+// Excepted reports whether an unexpired exception suppresses the gate for an
+// active key that is old or unused.
+func (f Finding) Excepted() bool { return f.excepted }
 
 func daysBetween(a, b time.Time) int {
 	return int(a.Sub(b).Hours() / 24)
@@ -88,6 +100,21 @@ func Evaluate(keys []Key, cfg Config) []Finding {
 		}
 
 		f.Reason = reason(f, active)
+		if e := pick(cfg.Exceptions, k, cfg.Now); e != nil {
+			expired := e.Expired(cfg.Now)
+			f.Exception = &ExceptionMatch{
+				User:             e.User,
+				AccessKeyID:      e.AccessKeyID,
+				Reason:           e.Reason,
+				Expires:          e.Expires,
+				Expired:          expired,
+				SuppressedReason: f.Reason,
+			}
+			if !expired && (f.old || f.unused) {
+				f.excepted = true
+				f.Reason = "excepted"
+			}
+		}
 		out = append(out, f)
 	}
 
@@ -114,10 +141,14 @@ func reason(f Finding, active bool) string {
 }
 
 // Breaches returns the findings that should turn the exit code red under cfg.FailOn.
-// "unused" is the stricter gate: it trips on both old and unused keys.
+// "unused" is the stricter gate: it trips on both old and unused keys. Keys
+// covered by an unexpired exception never breach.
 func Breaches(findings []Finding, failOn string) []Finding {
 	var bad []Finding
 	for _, f := range findings {
+		if f.excepted {
+			continue
+		}
 		switch failOn {
 		case "old":
 			if f.old {

@@ -17,7 +17,7 @@ func WriteTable(w io.Writer, findings []Finding) {
 			last = fmt.Sprintf("%dd ago", *f.LastUsedDays)
 		}
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%s\t%s\n",
-			f.User, f.AccessKeyID, f.Status, f.AgeDays, last, f.Reason)
+			f.User, f.AccessKeyID, f.Status, f.AgeDays, last, tableReason(f))
 	}
 	tw.Flush()
 }
@@ -30,4 +30,19 @@ func WriteJSON(w io.Writer, findings []Finding) error {
 		findings = []Finding{}
 	}
 	return enc.Encode(findings)
+}
+
+// tableReason adds the exception's state to the reason column: when a key is
+// excepted, until when; when its exception lapsed, since when.
+func tableReason(f Finding) string {
+	switch {
+	case f.Exception == nil:
+		return f.Reason
+	case f.excepted:
+		return fmt.Sprintf("excepted (%s, until %s)", f.Exception.SuppressedReason, f.Exception.Expires)
+	case f.Exception.Expired && (f.old || f.unused):
+		return fmt.Sprintf("%s (exception expired %s)", f.Reason, f.Exception.Expires)
+	default:
+		return f.Reason
+	}
 }

@@ -29,11 +29,20 @@ func run() error {
 		staleDays = flag.Int("stale-days", 90, "flag active keys not used within this many days")
 		failOn    = flag.String("fail-on", "old", "what turns the exit code red: none|old|unused")
 		asJSON    = flag.Bool("json", false, "emit JSON instead of a table")
+		excPath   = flag.String("exceptions", "", "YAML file of keys that do not gate until their expires date")
 	)
 	flag.Parse()
 
 	if !keyage.ValidFailOn(*failOn) {
 		return fmt.Errorf("invalid --fail-on %q: want none, old, or unused", *failOn)
+	}
+
+	var exceptions []keyage.Exception
+	if *excPath != "" {
+		var err error
+		if exceptions, err = loadExceptions(*excPath); err != nil {
+			return err
+		}
 	}
 
 	ctx := context.Background()
@@ -47,6 +56,7 @@ func run() error {
 		StaleDays:  *staleDays,
 		FailOn:     *failOn,
 		Now:        time.Now().UTC(),
+		Exceptions: exceptions,
 	}
 	findings := keyage.Evaluate(keys, cfg)
 
@@ -58,11 +68,32 @@ func run() error {
 		keyage.WriteTable(os.Stdout, findings)
 	}
 
+	if warnings := keyage.ExceptionWarnings(exceptions, keys, cfg.Now); len(warnings) > 0 {
+		fmt.Fprintln(os.Stderr)
+		for _, w := range warnings {
+			fmt.Fprintln(os.Stderr, "warning:", w)
+		}
+	}
+
 	if breaches := keyage.Breaches(findings, *failOn); len(breaches) > 0 {
 		fmt.Fprintf(os.Stderr, "\n%d access key(s) breach the policy (--fail-on %s)\n", len(breaches), *failOn)
 		os.Exit(1)
 	}
 	return nil
+}
+
+// loadExceptions reads and validates the --exceptions file.
+func loadExceptions(path string) ([]keyage.Exception, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("read exceptions: %w", err)
+	}
+	defer f.Close()
+	exceptions, err := keyage.LoadExceptions(f)
+	if err != nil {
+		return nil, fmt.Errorf("parse exceptions %s: %w", path, err)
+	}
+	return exceptions, nil
 }
 
 // collect lists every IAM user's access keys and their last-used dates.
